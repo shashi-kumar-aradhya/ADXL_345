@@ -52,13 +52,9 @@
 #define FIFO_CTL	0x38	/* R/W FIFO control */
 #define FIFO_STATUS	0x39	/* R   FIFO status */
 #define TAP_SIGN	0x3A	/* R   Sign and source for tap/double tap */
-/* Orientation ADXL346 only */
-#define ORIENT_CONF	0x3B	/* R/W Orientation configuration */
-#define ORIENT		0x3C	/* R   Orientation status */
 
 /* DEVIDs */
 #define ID_ADXL345	0xE5
-#define ID_ADXL346	0xE6
 
 /* INT_ENABLE/INT_MAP/INT_SOURCE Bits */
 #define DATA_READY	(1 << 7)
@@ -333,36 +329,6 @@ static irqreturn_t adxl34x_irq(int irq, void *handle)
 		if (int_stat & INACTIVITY)
 			input_report_key(ac->input,
 					 pdata->ev_code_act_inactivity, 0);
-	}
-
-	/*
-	 * ORIENTATION SENSING ADXL346 only
-	 */
-	if (pdata->orientation_enable) {
-		orient = AC_READ(ac, ORIENT);
-		if ((pdata->orientation_enable & ADXL_EN_ORIENTATION_2D) &&
-		    (orient & ADXL346_2D_VALID)) {
-
-			orient_code = ADXL346_2D_ORIENT(orient);
-			/* Report orientation only when it changes */
-			if (ac->orient2d_saved != orient_code) {
-				ac->orient2d_saved = orient_code;
-				adxl34x_report_key_single(ac->input,
-					pdata->ev_codes_orient_2d[orient_code]);
-			}
-		}
-
-		if ((pdata->orientation_enable & ADXL_EN_ORIENTATION_3D) &&
-		    (orient & ADXL346_3D_VALID)) {
-
-			orient_code = ADXL346_3D_ORIENT(orient) - 1;
-			/* Report orientation only when it changes */
-			if (ac->orient3d_saved != orient_code) {
-				ac->orient3d_saved = orient_code;
-				adxl34x_report_key_single(ac->input,
-					pdata->ev_codes_orient_3d[orient_code]);
-			}
-		}
 	}
 
 	if (int_stat & (DATA_READY | WATERMARK)) {
@@ -736,9 +702,6 @@ struct adxl34x *adxl34x_probe(struct device *dev, int irq,
 	switch (revid) {
 	case ID_ADXL345:
 		ac->model = 345;
-		break;
-	case ID_ADXL346:
-		ac->model = 346;
 		break;
 	default:
 		dev_err(dev, "Failed to probe %s\n", input_dev->name);
